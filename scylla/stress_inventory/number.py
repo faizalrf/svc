@@ -1,1 +1,0 @@
-scylla-cassandra-testing-framework/stress_inventory/number.py

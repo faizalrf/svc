@@ -1,1 +1,0 @@
-scylla-cassandra-testing-framework/aws/cluster/generate_ssh_scripts.py

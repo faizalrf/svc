@@ -1,1 +1,0 @@
-scylla-cassandra-testing-framework/aws/ansible_install/roles/ansible-scylla-node/molecule/debian10/INSTALL.rst

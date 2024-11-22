@@ -1,1 +1,0 @@
-scylla-cassandra-testing-framework/aws/ansible_install/configure_vars_ansible.py

@@ -1,1 +1,0 @@
-scylla-cassandra-testing-framework/aws/ansible_install/roles/example-playbooks/add_cluster_nodes/files/repair.sh

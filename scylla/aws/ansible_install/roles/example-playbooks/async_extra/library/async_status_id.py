@@ -1,1 +1,0 @@
-scylla-cassandra-testing-framework/aws/ansible_install/roles/example-playbooks/async_extra/library/async_status_id.py

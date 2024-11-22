@@ -1,1 +1,0 @@
-scylla-cassandra-testing-framework/aws/ansible_install/roles/ansible-scylla-node/molecule/ubuntu2004/INSTALL.rst
