@@ -1,0 +1,1 @@
+scylla-cassandra-testing-framework/aws/ansible_install/scylla.aws_ec2.yaml.tpl

@@ -1,0 +1,1 @@
+scylla-cassandra-testing-framework/aws/ansible_install/pull_all_tags.py

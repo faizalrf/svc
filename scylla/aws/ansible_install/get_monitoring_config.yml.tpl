@@ -1,0 +1,1 @@
+scylla-cassandra-testing-framework/aws/ansible_install/get_monitoring_config.yml.tpl

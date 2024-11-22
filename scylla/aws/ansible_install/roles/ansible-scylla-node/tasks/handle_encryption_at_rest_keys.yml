@@ -1,0 +1,1 @@
+scylla-cassandra-testing-framework/aws/ansible_install/roles/ansible-scylla-node/tasks/handle_encryption_at_rest_keys.yml

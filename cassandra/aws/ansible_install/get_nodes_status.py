@@ -1,0 +1,1 @@
+cassandra-testing-framework/aws/ansible_install/get_nodes_status.py
