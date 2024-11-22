@@ -1,1 +1,0 @@
-cassandra-testing-framework/testing-framework.sh

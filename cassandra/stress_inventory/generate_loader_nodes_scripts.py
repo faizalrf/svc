@@ -1,1 +1,0 @@
-cassandra-testing-framework/stress_inventory/generate_loader_nodes_scripts.py

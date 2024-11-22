@@ -1,1 +1,0 @@
-cassandra-testing-framework/aws/ansible_install/servers.aws_ec2.yaml.tpl
