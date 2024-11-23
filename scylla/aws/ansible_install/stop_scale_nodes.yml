@@ -1,0 +1,15 @@
+---
+- name: Stop Scylla Service on the additional Scaling Noded
+  hosts: scylla_scale
+  become: yes  # This playbook needs to run with sudo to manage system services
+  gather_facts: no
+  tasks:
+    - name: Stop the Scylla service
+      ansible.builtin.systemd:
+        name: scylla-server
+        state: stopped
+
+    - name: Enable the Scylla service to start on boot
+      ansible.builtin.systemd:
+        name: scylla-server
+        enabled: yes

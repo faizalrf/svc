@@ -1,0 +1,265 @@
+---
+- name: create the install directory
+  file:
+    path: "{{ scylla_monitoring_deploy_path }}"
+    state: directory
+    mode: '1775'
+    recurse: yes
+    owner: "{{ ansible_user_id }}"
+  become: true
+
+- name: create the data directory
+  file:
+    path: "{{ scylla_monitoring_data_path }}"
+    state: directory
+    mode: '1777'
+    recurse: yes
+    owner: "{{ ansible_user_id }}"
+  become: true
+
+- name: change permissions for the data directory to nobody
+  file:
+    path: "{{ scylla_monitoring_data_path }}"
+    state: directory
+    mode: '1777'
+    recurse: yes
+    owner: "nobody"
+  become: true
+  when: run_docker_with_sudo is defined and run_docker_with_sudo|bool == True
+
+- name: create the config directory
+  file:
+    path: "{{ scylla_monitoring_config_path }}"
+    state: directory
+    mode: '1775'
+    recurse: yes
+    owner: "{{ ansible_user_id }}"
+  become: true
+
+- name: create the prom_rules directory
+  file:
+    path: "{{ scylla_monitoring_prom_rules_path }}"
+    state: directory
+    mode: '1775'
+    recurse: yes
+    owner: "{{ ansible_user_id }}"
+  become: true
+
+- name: create the alert data directory
+  file:
+    path: "{{ scylla_monitoring_alertdata_path }}"
+    state: directory
+    mode: '1777'
+    recurse: yes
+    owner: "{{ ansible_user_id }}"
+  become: true
+
+- name: download the monitoring archive
+  get_url:
+    url: "{{ scylla_monitoring_archive_url }}"
+    dest: "{{ scylla_monitoring_deploy_path }}"
+    mode: '0644'
+    owner: "{{ ansible_user_id }}"
+  register: monitoring_archive
+
+- name: download and unpack the monitoring archive
+  unarchive:
+    src: "{{ monitoring_archive.dest }}"
+    dest: "{{ scylla_monitoring_deploy_path }}"
+    remote_src: yes
+    list_files: yes
+  register: unpacked_files
+
+- set_fact:
+    base_dir: "{{ scylla_monitoring_deploy_path }}/{{ unpacked_files.files[0] }}"
+
+- stat:
+    path: "{{ scylla_servers_yml_path }}"
+  register: scylla_servers_stat
+  delegate_to: localhost
+  run_once: true
+
+- name: insert scylla_servers.yml if provided by the user
+  copy:
+    src: "{{ scylla_servers_yml_path }}"
+    dest: "{{ scylla_monitoring_config_path }}/scylla_servers.yml"
+    mode: '0644'
+  when: scylla_servers_stat.stat.exists|bool
+
+- name: generate scylla_servers.yml for monitoring using nodetool status
+  block:
+    - command: nodetool status
+      register: nodetool_status_out
+      delegate_to: "{{ groups['scylla'][0] }}"
+
+    - shell: "{{ base_dir }}/genconfig.py -c {{ scylla_cluster_name }} -NS -o {{ scylla_monitoring_config_path }}/scylla_servers.yml"
+      args:
+        stdin: "{{ nodetool_status_out.stdout }}"
+  when: use_nodetool_status_with_genconfig|bool and scylla_servers_stat.stat.exists|bool == false
+  run_once: true
+
+- name: generate scylla_servers.yml for monitoring using the inventory
+  block:
+    # Resulting map -> {'-dc dc1': [node1, node2, node3], '-dc dc2': [node4, node5, node6]}
+    - name: Create a map from dc to its list of nodes
+      set_fact:
+        dc_to_node_list: "{{ dc_to_node_list | default({}) | combine( {'-dc ' + hostvars[item]['dc'] + hostvars[item]['dc_suffix'] | default(''): (dc_to_node_list | default({}))['-dc ' + hostvars[item]['dc'] + hostvars[item]['dc_suffix'] | default('')] | default([]) + [item]} ) }}"
+      loop: "{{ groups['scylla'] }}"
+
+    # Resulting str -> "-dc dc1:node1,node2,node3 -dc dc2:node4,node5,node6"
+    - name: Convert dc_to_node_list to a string to be used as argument for genconfig.py
+      set_fact:
+        dc_to_node_list_str: "{{ dc_to_node_list.keys() | zip(dc_to_node_list.values()) | map('join', ':') | join(' ') | replace('[','') | replace(']','') | replace(\"'\", '') | replace (', ', ',') }}"
+
+    - shell: "{{ base_dir }}/genconfig.py -c {{ scylla_cluster_name }} -o {{ scylla_monitoring_config_path }}/scylla_servers.yml {{ dc_to_node_list_str }}"
+  when: use_nodetool_status_with_genconfig|bool == false and scylla_servers_stat.stat.exists|bool == false
+  run_once: true
+
+- name: set up scylla_manager_servers.yml
+  copy:
+    content: |
+      - targets:
+        - {{ groups['scylla-manager'][0]|default('172.17.0.1') }}:5090
+    dest: "{{ scylla_monitoring_config_path }}/scylla_manager_servers.yml"
+    mode: '0644'
+
+- name: set prometheus rules file from preset file
+  copy:
+    src: "{{ prometheus_rules_file }}"
+    dest: "{{ scylla_monitoring_prom_rules_path }}/userdefined.rules.yml"
+    mode: '0644'
+  when: prometheus_rules_file is defined and prometheus_rules_file != 'default'
+
+- name: Check that prometheus rules file from the default file exists
+  stat:
+    path: "{{ base_dir }}/prometheus/prometheus.rules.yml"
+  register: prom_rules_file
+
+- name: set prometheus rules file from the default file
+  copy:
+    src: "{{ base_dir }}/prometheus/prometheus.rules.yml"
+    remote_src: true
+    dest: "{{ scylla_monitoring_prom_rules_path }}/prometheus.rules.yml"
+    mode: '0644'
+  when: prom_rules_file.stat.exists
+
+- name: Check that prometheus rules file from the default file exists in new 3.8 path
+  stat:
+    path: "{{ base_dir }}/prometheus/prom_rules/prometheus.rules.yml"
+  register: prom_rules_sub_file
+
+- name: copy ALL rules files from the default prom_rules file location
+  copy:
+    src: "{{ base_dir }}/prometheus/prom_rules/"
+    remote_src: true
+    dest: "{{ scylla_monitoring_prom_rules_path }}/"
+    mode: '0755'
+  when: prom_rules_sub_file.stat.exists
+
+- name: Filter out default rules
+  block:
+    - name: "Read current {{ scylla_monitoring_prom_rules_path }}/prometheus.rules.yml"
+      command: "cat {{ scylla_monitoring_prom_rules_path }}/prometheus.rules.yml"
+      register: _prometheus_rules_yaml_out
+
+    - name: "Parse {{ scylla_monitoring_prom_rules_path }}/prometheus.rules.yml"
+      set_fact:
+        _prometheus_rules_yaml_map: "{{ _prometheus_rules_yaml_out.stdout | from_yaml }}"
+
+    - name: Store filtered rules
+      set_fact:
+        _filtered_rules: "{{ _prometheus_rules_yaml_map.groups.0.rules | rejectattr('alert', 'match', scylla_monitoring_default_alert_reject_filter) }}"
+
+    - name: Combine after filtering
+      set_fact:
+        _full_filtered_rules_map: "{'groups': [{'name': 'scylla.rules', 'rules': {{ _filtered_rules }} }]}"
+
+    - name: Store filtered file
+      copy: content="{{ _full_filtered_rules_map | to_yaml }}" dest="{{ scylla_monitoring_prom_rules_path }}/prometheus.rules.yml"
+  when: scylla_monitoring_default_alert_reject_filter is defined
+
+- name: Delete backfill directory
+  file:
+    state: absent
+    path: "{{ scylla_monitoring_prom_rules_path }}/back_fill/"
+
+- name: set prometheus template file from preset file
+  copy:
+    src: "{{ prometheus_yml_template_file }}"
+    dest: "{{ scylla_monitoring_config_path }}/prometheus.yml.template"
+    mode: '0644'
+  when: prometheus_yml_template_file is defined and prometheus_yml_template_file != 'default'
+
+- name: set prometheus template from the default file
+  copy:
+    src: "{{ base_dir }}/prometheus/prometheus.yml.template"
+    remote_src: true
+    dest: "{{ scylla_monitoring_config_path }}/prometheus.yml.template"
+    mode: '0644'
+  when: prometheus_yml_template_file is defined and prometheus_yml_template_file == 'default'
+
+- stat:
+    path: "{{ rule_config_yml_path }}"
+  register: rule_config_stat
+  delegate_to: localhost
+  run_once: true
+
+- name: insert rule_config.yml if provided by the user
+  copy:
+    src: "{{ rule_config_yml_path }}"
+    dest: "{{ scylla_monitoring_config_path }}/rule_config.yml"
+    mode: '0644'
+  when: rule_config_stat.stat.exists|bool
+
+- name: Generate rule_config if not provided by the user
+  template:
+    src: templates/rule_config.yml.j2
+    dest: "{{ scylla_monitoring_config_path }}/rule_config.yml"
+    mode: '0644'
+  when: rule_config_stat.stat.exists|bool == false
+
+- name: Set _scylla_monitoring_params to scylla_monitoring_params
+  set_fact:
+    _scylla_monitoring_params: "{{ scylla_monitoring_params | default('') }}"
+
+- name: Auto-detect Scylla Manager version
+  block:
+    - name: Get Scylla Manager version from "{{ groups['scylla-manager'][0] }}"
+      shell: |
+        sctool version | grep ^Server | tr -d ' ' | cut -d':' -f2- | cut -d'.' -f1,2
+      delegate_to: "{{ groups['scylla-manager'][0] }}"
+      register: _sm_version_out
+
+    - name: Adding Scylla Manager dashboard option if getting a Manager version was successful
+      set_fact:
+        _scylla_monitoring_params: "{{ _scylla_monitoring_params }} -M {{ _sm_version_out.stdout }}"
+      when: _sm_version_out.stdout != ''
+
+    - name: Error out if failed to get Scylla Manager version
+      fail:
+        msg: "Can't auto-detect Scylla Manager dashboard version. Either specify it explicitly or install Scylla Manager Server on the Scylla Manager host."
+      when: _sm_version_out.stdout == ''
+  when: _scylla_monitoring_params is not search("-M\s+") and 'scylla-manager' in groups and (groups['scylla-manager']|length > 0)
+
+- name: Set _scylla_monitoring_dashboards_versions to scylla_monitoring_dashboards_versions
+  set_fact:
+    _scylla_monitoring_dashboards_versions: "{{ scylla_monitoring_dashboards_versions | default([]) }}"
+
+- name: Auto-detect Scylla version if dashboard versions were not explicitly specified
+  block:
+    - name: Get Scylla version from "{{ groups['scylla'][0] }}"
+      shell: |
+        scylla --version | cut -d'.' -f1,2
+      delegate_to: "{{ groups['scylla'][0] }}"
+      register: _scylla_version_out
+
+    - name: Adding Scylla dashboard option if getting a Scylla version was successful
+      set_fact:
+        _scylla_monitoring_dashboards_versions: ["{{ _scylla_version_out.stdout }}"]
+      when: _scylla_version_out.stdout != ''
+
+    - name: Error out if failed to get Scylla version
+      fail:
+        msg: "Can't auto-detect Scylla dashboard version. Either specify it explicitly or install scylla on the first Scylla node."
+      when: _scylla_version_out.stdout == ''
+  when: (_scylla_monitoring_dashboards_versions|length == 0) and 'scylla' in groups and (groups['scylla']|length > 0)

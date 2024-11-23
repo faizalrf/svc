@@ -1,0 +1,47 @@
+---
+- name: Execute Scylla Monitoring scripts
+  hosts: aws_monitor
+  gather_facts: no
+  tasks:
+    - name: Find the Scylla Monitoring directory
+      find:
+        paths: /opt/scylla-monitoring/
+        patterns: 'scylla-monitoring-*'
+        file_type: directory
+      register: scylla_monitoring_dir
+
+    - name: Transfer updated scylla_servers.yml to the remote config directory
+      copy:
+        src: ./scylla_servers_full.yml
+        dest: "/opt/scylla-monitoring/config/scylla_servers.yml"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    #- name: Shutdown monitoring
+    #  ansible.builtin.shell: |
+    #    cd {{ scylla_monitoring_dir.files[0].path }}
+    #    ./kill-all.sh
+    #  register: kill_all_result
+    #  ignore_errors: yes
+    #
+    #- name: Check Shutdown was successful
+    #  ansible.builtin.fail:
+    #    msg: "Monitoring shutdown failed!"
+    #  when: kill_all_result.rc != 0
+    #
+    #- name: Start monitoring
+    #  ansible.builtin.shell: |
+    #    cd {{ scylla_monitoring_dir.files[0].path }}
+    #    ./start-all.sh -s /opt/scylla-monitoring/config/scylla_servers.yml -d prometheus_data
+    #  register: start_all_result
+    #  ignore_errors: yes
+    #
+    #- name: Check if Startup was successful
+    #  ansible.builtin.fail:
+    #    msg: "Monitoring restart failed!"
+    #  when: start_all_result.rc != 0
+
+    - name: Display success message
+      ansible.builtin.debug:
+        msg: "Scylla scale-out successfull!"

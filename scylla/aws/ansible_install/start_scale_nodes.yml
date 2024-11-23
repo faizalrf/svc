@@ -1,0 +1,28 @@
+---
+- name: Start Scale-out Process
+  hosts: scylla_scale
+  become: yes  # This playbook needs to run with sudo to manage system services
+  gather_facts: no
+  vars_files:
+    - ../../variables.yml  # Explicitly include the variables.yml file
+  # Set serial based on enable_tablets being true or false. 100% serial means all node processed in parallel, 1 means one node at a time
+  serial: "{{ '100%' if scylla_params.enable_tablets else '1' }}"
+  tasks:
+    - name: Start all the Scylla Scale-out nodes
+      ansible.builtin.systemd:
+        name: scylla-server
+        state: started
+
+    - name: Wait for CQL port to be open on all the Scaled-out nodes
+      ansible.builtin.wait_for:
+        port: 9042
+        delay: 5  # Wait for 5 seconds before starting to check
+        timeout: 600  # Timeout after 600 seconds if the port is not open
+        state: started
+
+    - name: Wait for Scylla server to enter 'serving' state
+      ansible.builtin.shell: |
+        until systemctl status scylla-server | grep -q "Status: \"serving\""; do sleep 2; done
+      async: 360
+      poll: 2
+ 

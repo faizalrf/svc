@@ -1,0 +1,46 @@
+{
+   cluster_name: "my-client-name-dec-31",  # for Faisal Saeed, Zee testing for Sep `FS-Grab-Tablets-Sep-20`
+   scylla_version: "2024.2.0-rc2",  # Same version will be used for Loader and ScyllaDB nodes. Faisal, 2024-09-04
+   cloud : "aws",
+   regions: {
+      "us-east-1": {"nodes": 3, 
+         "scylla_node_type": "i4i.xlarge",
+         "scale_nodes": 3,  # Only for AWS at the moment, 2024-08-08, Set to 0 if scaling is nodes are not required. Faisal. 2024-08-08
+         "scylla_scale_node_type": "i4i.xlarge", # Only for AWS at the moment, 2024-08-08, Faisal. 
+         "loaders": 3, 
+         "loaders_type": "m4.2xlarge",
+         "cidr": "10.1.0.0/16",   # Make sure the cidr ranges are unique for both regions in case of a multi-region setup.
+         "az_mode": "multi-az"},
+         #"az_mode": "single-az"},
+      # Optional Second region configuration example if multi-region setup is required
+      #   "scylla_node_type": "i4i.xlarge",
+      #   "scale_nodes": 3,  # Only for AWS at the moment, 2024-08-08, Set to 0 if scaling is nodes are not required. Faisal. 2024-08-08
+      #   "scylla_scale_node_type": "i4i.xlarge", # Only for AWS at the moment, 2024-08-08, Faisal. 
+      #   "loaders": 3, 
+      #   "loaders_type": "m4.2xlarge",
+      #   "cidr": "10.2.0.0/16",   # Make sure the cidr ranges are unique for both regions in case of a multi-region setup.
+      #   "az_mode": "multi-az"},
+      #   "az_mode": "single-az"},
+   },
+   # Ensure the following two public and private keys path and names are correct
+   path_to_key: "~/.ssh/id_ed25519.pub",
+   path_to_private: "~/.ssh/id_ed25519",
+   monitoring_type: "m4.2xlarge",
+   # The scylla_params block controls which variables are written into the /etc/scylla.yaml file of each of the Scylla node. Faisal, 2024-09-03
+   # Don't remove `enable_tablets`, if you don't need tablets, just set it to `false`. Faisal, 2024-09-03
+   scylla_params: {
+      enable_tablets: true, 
+      enable_keyspace_column_family_metrics: true
+   },
+   stress_setup: {  # Per Loader node setup, Faisal. 2024-08-20
+      number_of_loader_threads: 8,
+      number_of_loader_instances: 2,   # This defines the number of cassandra-stress initload processes running on each of the Loader nodes
+      number_of_stress_threads: 64,
+      number_of_stress_instances: 2,   # This defines the number of cassandra-stress stresstest processes running on each of the Loader nodes
+      consistency_level: "ONE",
+      stress_duration_minutes: "60m",
+      desired_node_size: 0.3,   #This is in TB for, say, 200GB use 0.2
+      ratio: "1:3",
+      select_query: "simple"
+   }
+}

@@ -1,0 +1,59 @@
+{
+   cluster_name: "fs-scylla-vs-cassandra-007",  # for Faisal Saeed, Zee testing for Sep `FS-Grab-Tablets-Sep-20`
+   
+   scylla_version: "2024.2.0-rc2",  # Same version will be used for Loader and ScyllaDB nodes. Faisal, 2024-09-04
+   cloud : "aws",
+   regions: {
+      "us-east-1": {"nodes": 3, 
+         "scylla_node_type": "i4i.4xlarge",
+         "scale_nodes": 3,  # Only for AWS at the moment, 2024-08-08, Set to 0 if scaling is nodes are not required. Faisal. 2024-08-08
+         "scylla_scale_node_type": "i4i.4xlarge", # Only for AWS at the moment, 2024-08-08, Faisal. 
+         "loaders": 3, 
+         "loaders_type": "c4.4xlarge",
+         "cidr": "10.1.0.0/16",   # Make sure the cidr ranges are unique for both regions in case of a multi-region setup.
+         "cassandra_nodes": 3, 
+         "cassandra_node_type": "i4i.xlarge",
+         "cassandra_scale_nodes": 0,  # Only for AWS at the moment, 2024-08-08, Set to 0 if scaling is nodes are not required. Faisal. 2024-08-08
+         "cassandra_scale_node_type": "i4i.xlarge", # Only for AWS at the moment, 2024-08-08, Faisal. 
+         "az_mode": "multi-az"},
+         #"az_mode": "single-az"},
+      # Optional Second region configuration example if multi-region setup is required
+      #"us-east-2": {"nodes": 3, 
+      #   "scylla_node_type": "i4i.4xlarge" , 
+      #   "scale_nodes": 3,  # Only for AWS at the moment, 2024-08-08, Set to 0 if scaling is nodes are not required. Faisal. 
+      #   "scylla_scale_node_type": "i4i.4xlarge", # Only for AWS at the moment, 2024-08-08, Faisal. 
+      #   "loaders": 0 , 
+      #   "loaders_type": "i4i.4xlarge" ,
+      #   "cidr": "10.2.0.0/16", 
+      #   "az_mode": "multi-az"},
+   },
+   # Ensure the following two public and private keys path and names are correct
+   path_to_key: "~/.ssh/id_ed25519.pub",
+   path_to_private: "~/.ssh/id_ed25519",
+   monitoring_type: "m4.2xlarge",
+   # The scylla_params block controls which variables are written into the /etc/scylla.yaml file of each of the Scylla node. Faisal, 2024-09-03
+   # Don't remove `enable_tablets`, if you don't need tablets, just set it to `false`. Faisal, 2024-09-03
+   scylla_params: {
+      enable_tablets: true, 
+      target_tablet_size_in_bytes: 3221225472,
+      enable_keyspace_column_family_metrics: false,
+   },
+   #   alternator_port: 8000,
+   #   alternator_write_isolation: only_rmw_uses_lwt
+   stress_setup: {  # Per Loader node setup, Faisal. 2024-08-20
+      number_of_loader_threads: 750,
+      loader_test_throttle: 300000,
+      number_of_loader_instances: 1,   # This defines the number of cassandra-stress initload processes running on each of the Loader nodes
+      number_of_stress_threads: 750,
+      number_of_stress_instances: 1,   # This defines the number of cassandra-stress stresstest processes running on each of the Loader nodes
+      stress_test_throttle: 200000,    # Throttling at the cluster level for the standard stress testing without stepping
+      stepped_stress_test_start: 380000,   # Stepped parameters are meant for generating cassandra-stress scripts with throughput throttling 
+      stepped_stress_test_end: 460000,    # Max throughput throttling at the cluster level
+      stepped_stress_test_step: 10000,    # Every stepped throttling will be an increment of 20k
+      consistency_level: "QUORUM",
+      stress_duration_minutes: "60m",
+      desired_node_size: 1,   #This is in TB for, say, 200GB use 0.2
+      ratio: "1:1",
+      select_query: "simple"
+   }
+}

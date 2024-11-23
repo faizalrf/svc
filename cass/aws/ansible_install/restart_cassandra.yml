@@ -1,0 +1,54 @@
+---
+- name: Rolling restart of Cassandra nodes
+  hosts: cassandra_seed, cassandra_nonseed
+  become: yes
+  become_user: ubuntu  # Run tasks as the ubuntu user
+  serial: 1
+  vars_files:
+    - ../../variables.yml
+  tasks:
+    - name: Ensure installation directory exists
+      file:
+        path: "{{ cassandra_install_dir }}"
+        state: directory
+
+    - name: Update Cassandra Environment (if needed)
+      template:
+        src: cassandra-env.sh.j2
+        dest: "{{ cassandra_home }}/conf/cassandra-env.sh"
+
+    - name: Update Cassandra JVM Server Options (if needed)
+      template:
+        src: jvm-server.options.j2
+        dest: "{{ cassandra_home }}/conf/jvm-server.options"
+
+    - name: Update Cassandra JVM11 Server Options (if needed)
+      template:
+        src: jvm11-server.options.j2
+        dest: "{{ cassandra_home }}/conf/jvm11-server.options"
+
+    - name: Update cassandra.yaml (if needed)
+      template:
+        src: cassandra.yaml.j2
+        dest: "{{ cassandra_home }}/conf/cassandra.yaml"
+
+    - name: Stop Cassandra process
+      command: pkill -f Cassandra
+      ignore_errors: true
+
+    - name: Pause for 2 minutes before restarting Cassandra
+      pause:
+        seconds: 120
+
+    - name: Start Cassandra process
+      command: "{{ cassandra_home }}/bin/cassandra -R"
+      async: 600
+      poll: 2
+      ignore_errors: true
+      register: cassandra_start
+
+    - name: Wait for Cassandra CQL to become available
+      wait_for:
+        host: "{{ ansible_default_ipv4.address }}"
+        port: 9042
+        timeout: 600

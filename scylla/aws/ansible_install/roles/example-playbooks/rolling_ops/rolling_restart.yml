@@ -1,0 +1,72 @@
+---
+# This playbook follows the Scylla rolling restart procedure described at https://docs.scylladb.com/operating-scylla/procedures/config-change/rolling_restart/
+# This playbook expects at least Scylla version 2021, which has seedless feature
+# The play must be run with the --limit argument, specifying either "all" or a list of node IPs
+#
+# In order to perform a rolling reboot set a 'reboot_hosts' boolean. By default, hosts are not rebooted.
+# You can control the bootstrap timeout by setting 'scylla_bootstrap_wait_time_sec'
+# For example
+#    ansible-playbook -i inventory.ini --limit x.y.z.k -e "reboot_hosts=true" -e "scylla_bootstrap_wait_time_sec=3600" <path to a playbook>/rolling_restart.yml
+
+- name: Rolling restart across a Scylla cluster - restart all inventory nodes
+  hosts: scylla
+  serial: 1
+  become: true
+  gather_facts: false
+  tasks:
+    - name: checking limit arg
+      fail:
+        msg: "You must use -l or --limit. To restart the entire cluster, use -l 'all'"
+      when: ansible_limit is not defined
+
+    - name: register scylla listen address
+      shell: |
+        grep '^listen_address:' /etc/scylla/scylla.yaml |awk '{ print $2 }'
+      register: listen_address
+
+    - name: run nodetool drain
+      shell: |
+        nodetool drain
+
+    - name: wait for DRAIN to complete
+      shell: |
+        journalctl -u scylla-server --since "1 minute ago" | grep 'storage_service' | grep 'DRAINED'
+      retries: 3000
+      delay: 1
+      register: drain_result
+      until: drain_result.rc == 0
+      ignore_errors: true
+
+    - name: Stop Scylla service
+      service:
+        name: scylla-server
+        state: stopped
+
+    - name: Reboot host and wait for it to restart
+      reboot:
+        msg: "Reboot initiated by Ansible"
+        connect_timeout: 5
+        reboot_timeout: 600
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: whoami
+      when: reboot_hosts is defined and reboot_hosts|bool
+
+    - name: Start Scylla service
+      service:
+        name: scylla-server
+        state: started
+
+    - name: Wait for CQL port on {{ listen_address.stdout }}
+      wait_for:
+        port: 9042
+        host: "{{ listen_address.stdout }}"
+        timeout: "{{ scylla_bootstrap_wait_time_sec | default(3000) }}"
+
+    - name: wait for the cluster to become healthy
+      shell: |
+        nodetool status|grep "{{ listen_address.stdout }}" | grep '^UN'
+      register: node_status
+      until: node_status.rc == 0
+      retries: 3000
+      delay: 1

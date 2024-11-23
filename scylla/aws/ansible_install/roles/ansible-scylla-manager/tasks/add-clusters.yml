@@ -1,0 +1,37 @@
+---
+- name: read the contents of the auth_token_file
+  set_fact:
+    auth_token: "{{ lookup('file', item.auth_token_file) }}"
+
+- name: Get already configured cluster list
+  shell: |
+    echo $(sctool status|grep -q "Cluster: {{ item.cluster_name }} " && echo "present")
+  register: cluster_already_added
+
+- name: run sctool cluster add for "{{ item.cluster_name }}"
+  shell: |
+    sctool cluster add \
+      --host {{ item.host }} \
+      --name {{ item.cluster_name }} \
+      {% if not item.without_token is defined or item.without_token|bool == false %}
+      --auth-token "{{ auth_token }}" \
+      {% endif %}
+      {% if item.username is defined and item.password is defined %}
+      --username {{ item.username }} \
+      --password {{ item.password }} \
+      {% endif %}
+  when: cluster_already_added is not defined or cluster_already_added.stdout != "present"
+
+- name: Enforce configuration for existing cluster "{{ item.cluster_name }}"
+  shell: |
+    sctool cluster update -c {{ item.cluster_name }}  \
+      --host {{ item.host }} \
+      {% if not item.without_token is defined or item.without_token|bool == false %} \
+      --auth-token "{{ auth_token }}" \
+      {% endif %}
+      {% if item.username is defined and item.password is defined %}
+      --username {{ item.username }} \
+      --password {{ item.password }} \
+      {% endif %}
+  when: cluster_already_added is defined and cluster_already_added.stdout == "present"
+      

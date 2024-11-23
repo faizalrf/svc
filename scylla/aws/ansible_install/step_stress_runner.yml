@@ -1,0 +1,24 @@
+---
+- hosts: aws_loader
+  gather_facts: no
+  tasks:
+    - name: Find all loader scripts
+      find:
+        paths: /home/ubuntu/  # This should match the directory where the scripts are located
+        patterns: "step_stresstest*.sh"
+      register: scripts_found
+      no_log: true  # This will display the details of this task
+
+    - name: Sort scripts by name
+      set_fact:
+        sorted_scripts: "{{ scripts_found.files | sort(attribute='path') }}"
+
+    - name: Execute each loader script sequentially
+      shell: "bash {{ item.path }}"
+      with_items: "{{ sorted_scripts }}"
+      args:
+        chdir: /home/ubuntu/  # Ensure in correct directory
+        executable: /bin/bash  # Specify shell interpreter
+      async: 7200  # Max expected duration of each script, adjust if needed
+      poll: 60  # Check every minute if the task is complete
+      no_log: true  # Display logging details of this task

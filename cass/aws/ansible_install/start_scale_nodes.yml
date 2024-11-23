@@ -1,0 +1,157 @@
+---
+# Step 1: Gather facts for seed nodes (executed once on seed nodes)
+- name: Gather facts for seed nodes
+  hosts: cassandra_seed
+  gather_facts: yes
+
+# Step 2: Install Cassandra on non-seed nodes in parallel
+- name: Install Cassandra scale nodes (parallel tasks)
+  hosts: cassandra_nonseed
+  become: yes
+  serial: "{{ ansible_play_hosts | length }}"  # Run all tasks in parallel
+  vars_files:
+    - ../../variables.yml
+  tasks:
+    - name: Create and set permissions for Ansible remote_tmp directory
+      file:
+        path: /tmp/ansible_tmp
+        state: directory
+        mode: '1777'
+        owner: root
+        group: root  
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install OpenJDK
+      apt:
+        name: openjdk-11-jdk
+        state: present
+      become: yes
+
+    - name: Ensure installation directory exists
+      file:
+        path: "{{ cassandra_home }}"
+        state: directory
+
+    - name: Ensure nvme1n1 is formatted as xfs
+      filesystem:
+        fstype: xfs
+        dev: /dev/nvme1n1
+
+    - name: Create Cassandra data directory
+      file:
+        path: /var/lib/cassandra
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Mount the device to Cassandra data directory
+      mount:
+        path: /var/lib/cassandra
+        src: /dev/nvme1n1
+        fstype: xfs
+        opts: defaults,noatime
+        state: mounted
+
+    - name: Add mount to /etc/fstab
+      mount:
+        path: /var/lib/cassandra
+        src: /dev/nvme1n1
+        fstype: xfs
+        opts: defaults,noatime
+        state: present
+        
+    - name: Ensure Cassandra data directory ownership is set to ubuntu
+      file:
+        path: /var/lib/cassandra
+        owner: ubuntu
+        group: ubuntu
+        recurse: yes
+
+    - name: Download Cassandra tarball
+      get_url:
+        url: "{{ cassandra_tarball }}"
+        dest: "{{ cassandra_install_dir }}/apache-cassandra-{{ cassandra_version }}-bin.tar.gz"
+        mode: '0755'
+
+    - name: Extract Cassandra tarball
+      ansible.builtin.unarchive:
+        src: "{{ cassandra_install_dir }}/apache-cassandra-{{ cassandra_version }}-bin.tar.gz"
+        dest: "{{ cassandra_home }}"
+        remote_src: yes
+        extra_opts: ["--strip-components=1"]
+
+    - name: Change ownership of Cassandra directory
+      file:
+        path: "{{ cassandra_home }}"
+        owner: ubuntu
+        group: ubuntu
+        recurse: yes
+
+    - name: Add Cassandra bin directory to PATH for all users
+      copy:
+        dest: /etc/profile.d/cassandra_path.sh
+        content: 'export PATH=$PATH:{{ cassandra_home }}/bin:{{ cassandra_home }}/tools/bin'
+        mode: '0755'
+
+    - name: Update Cassandra Environment (if needed)
+      template:
+        src: cassandra-env.sh.j2
+        dest: "{{ cassandra_home }}/conf/cassandra-env.sh"
+
+    - name: Update Cassandra JVM Server Options (if needed)
+      template:
+        src: jvm-server.options.j2
+        dest: "{{ cassandra_home }}/conf/jvm-server.options"
+
+    - name: Update Cassandra JVM11 Server Options (if needed)
+      template:
+        src: jvm11-server.options.j2
+        dest: "{{ cassandra_home }}/conf/jvm11-server.options"
+
+    - name: Update cassandra.yaml (if needed)
+      template:
+        src: cassandra.yaml.j2
+        dest: "{{ cassandra_home }}/conf/cassandra.yaml"
+
+    - name: Ensure /etc/profile.d directory exists
+      file:
+        path: /etc/profile.d
+        state: directory
+        mode: '0755'
+
+    - name: Create cassandra.sh file if it does not exist
+      file:
+        path: /etc/profile.d/cassandra.sh
+        state: touch
+        mode: '0644'
+
+    - name: Set up Cassandra environment variables
+      lineinfile:
+        path: /etc/profile.d/cassandra.sh
+        line: 'export CASSANDRA_HOME={{ cassandra_home }}'
+
+# Step 3: Start Cassandra and wait for CQL to become available (sequential tasks)
+- name: Start Cassandra on scale nodes sequentially
+  hosts: cassandra_scale
+  become: yes
+  serial: 1  # Run each node sequentially for these tasks only
+  vars_files:
+    - ../../variables.yml
+
+  tasks:
+    - name: Start Cassandra on scale node
+      command: "{{ cassandra_home }}/bin/cassandra -R"
+      async: 360
+      poll: 2
+      become_user: ubuntu
+      ignore_errors: true
+
+    - name: Wait for Cassandra CQL to become available
+      wait_for:
+        host: "{{ ansible_default_ipv4.address }}"
+        port: 9042
+        timeout: 600

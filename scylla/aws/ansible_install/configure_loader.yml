@@ -1,0 +1,15 @@
+- name: Configure loader tools
+  hosts: aws_loader
+  gather_facts: no
+  become: yes  
+  tasks:
+    - name: Disable the Scylla service to on the loader nodes
+      ansible.builtin.systemd:
+        name: scylla-server
+        enabled: no
+
+    - name: Install Scylla version of cassandra-stress on the loader nodes
+      apt: 
+        name: scylla-enterprise-tools
+        state: latest
+        update_cache: yes

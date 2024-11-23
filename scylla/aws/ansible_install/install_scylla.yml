@@ -1,0 +1,77 @@
+---
+- name: Install Scylla on nodes
+  hosts: scylla
+  become: true
+  any_errors_fatal: true
+  vars:
+    swap_file_size_mb: '1024'
+    scylla_deb_repos: 
+      - http://downloads.scylladb.com/deb/ubuntu/scylla-2024.1.list
+    scylla_repo_keyserver: 'hkp://keyserver.ubuntu.com:80'
+    scylla_repo_keys:
+      - 5e08fbd8b5d6ec9c
+      - D0A112E067426AB2
+    scylla_dependencies:
+      - curl
+      - wget
+      - xfsprogs
+    scylla_version: 'latest' #or 2024.1.1
+    scylla_edition: 'enterprise' #or oss
+    scylla_cluster_name: "{{ hostvars[groups['scylla'][0]]['tags']['Project'] }}"
+    scylla_snitch: Ec2Snitch
+    scylla_yaml_params:
+      auto_snapshot: False
+      alternator_port: 8000
+      alternator_write_isolation: only_rmw_uses_lwt # or always, forbid or unsafe
+      consistent_cluster_management: False
+    scylla_seeds:
+      - "{{ hostvars[groups['scylla'][0]]['private_ip_address'] }}"
+    generate_monitoring_config: True
+    scylla_authentication: False
+    scylla_manager_enabled: False
+    scylla_raid_setup:
+      - /dev/nvme1n1
+    scylla_ssl:
+      internode:
+        enabled: false
+      client:
+        enabled: false
+
+  roles:
+    - geerlingguy.swap
+    - ansible-scylla-node
+
+  post_tasks:
+    - name: "Enable and start node exporter"
+      systemd:
+        name: node-exporter
+        enabled: True
+        state: started
+      ignore_errors: true
+    - name: "Enable and start node exporter for Scylla 2022+"
+      systemd:
+        name: scylla-node-exporter.service
+        enabled: True
+        state: started
+      ignore_errors: true
+    - name: Generate Scylla Monitoring configuration file remotely
+      ansible.builtin.shell: |
+        wget https://raw.githubusercontent.com/scylladb/scylla-monitoring/master/genconfig.py
+        nodetool status | python3 genconfig.py -NS
+      run_once: true
+    - name: Copy scylla_servers.yml to local
+      ansible.builtin.copy:
+        src: scylla_servers.yml
+        dest: ./scylla_servers.yml
+        remote_src: yes
+      run_once: true
+
+  pre_tasks:
+    - name: Remove scylla_servers.yml from localhost
+      file:
+        path:  ./scylla_servers.yml
+        state: absent
+      delegate_to: localhost
+      run_once: True
+      become: False
+

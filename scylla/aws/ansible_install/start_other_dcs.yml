@@ -1,0 +1,51 @@
+---
+- name: Restart Scylla Server on Seed Nodes on the other DC
+  hosts: scylla_seed2
+  become: yes  # This playbook needs to run with sudo to manage system services
+  gather_facts: no
+  vars_files:
+    - ../../variables.yml  # Explicitly include the variables.yml file
+  # Set serial based on enable_tablets being true or false. 100% serial means all node processed in parallel, 1 means one node at a time
+  serial: "{{ '100%' if scylla_params.enable_tablets else '1' }}"
+  tasks:
+    - name: Stop the Scylla service
+      ansible.builtin.systemd:
+        name: scylla-server
+        state: stopped
+
+    - name: Enable the Scylla service to start on boot
+      ansible.builtin.systemd:
+        name: scylla-server
+        enabled: yes
+
+    - name: Start all the Scylla nodes on the other DC
+      ansible.builtin.systemd:
+        name: scylla-server
+        state: started
+
+    - name: Wait for CQL port to be open
+      ansible.builtin.wait_for:
+        port: 9042
+        delay: 10  # Wait for 10 seconds before starting to check
+        timeout: 1200  # Timeout after 1200 seconds if the port is not open
+        state: started
+
+    - name: Wait for Scylla server to enter 'serving' state
+      ansible.builtin.shell: |
+        until systemctl status scylla-server | grep -q "Status: \"serving\""; do sleep 10; done
+      async: 600
+      poll: 10
+      # This task waits up to 6 minutes (60 seconds), checking every 10 seconds, for the Scylla server to report it is in a 'serving' state.
+   
+    - name: Check if Scylla service is active
+      ansible.builtin.command: systemctl is-active scylla-server
+      register: scylla_service_active
+      failed_when: false
+      # We do not want this task to fail the playbook; instead, we will use its result to decide if we need to restart.
+
+    - name: Restart Scylla server if it is not active
+      ansible.builtin.systemd:
+        name: scylla-server
+        state: restarted
+      when: scylla_service_active.stdout != "active"
+      # This task restarts the Scylla server if the previous check finds the service is not active.

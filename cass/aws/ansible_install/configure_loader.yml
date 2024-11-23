@@ -1,0 +1,57 @@
+---
+- name: Install Cassandra Tools on the Cassandra Loader
+  hosts: aws_loader 
+  become: yes
+  vars_files:
+    - ../../variables.yml
+
+  tasks:
+    - name: Create and set permissions for Ansible remote_tmp directory
+      file:
+        path: /tmp/ansible_tmp
+        state: directory
+        mode: '1777'
+        owner: root
+        group: root  
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install OpenJDK
+      apt:
+        name: openjdk-11-jdk
+        state: present
+      become: yes
+
+    - name: Ensure installation directory exists
+      file:
+        path: "{{ cassandra_home }}"
+        state: directory
+
+    - name: Download Cassandra tarball
+      get_url:
+        url: "{{ cassandra_tarball }}"
+        dest: "{{ cassandra_install_dir }}/apache-cassandra-{{ cassandra_version }}-bin.tar.gz"
+        mode: '0755'
+
+    - name: Extract Cassandra tarball
+      ansible.builtin.unarchive:
+        src: "{{ cassandra_install_dir }}/apache-cassandra-{{ cassandra_version }}-bin.tar.gz"
+        dest: "{{ cassandra_home }}"
+        remote_src: yes
+        extra_opts: ["--strip-components=1"]  # Remove the top-level directory
+      
+    - name: Change ownership of Cassandra directory
+      file:
+        path: "{{ cassandra_home }}"
+        owner: ubuntu
+        group: ubuntu
+        recurse: yes
+
+    - name: Add Cassandra tools directory to PATH for all users
+      become: yes
+      copy:
+        dest: /etc/profile.d/cassandra_path.sh
+        content: 'export PATH=$PATH:{{ cassandra_home }}/tools/bin'
+        mode: '0755'

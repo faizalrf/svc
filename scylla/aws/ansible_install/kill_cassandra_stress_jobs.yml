@@ -1,0 +1,60 @@
+---
+- name: Kill and verify the cassandra-stress and java processes on remote hosts
+  hosts: aws_loader
+  become: yes  # Escalate privileges to root if necessary
+  gather_facts: no
+  tasks:
+    - name: Get running cassandra-stress processes
+      shell: "ps -ef | grep -v grep | grep -w cassandra-stress | awk '{print $2}'"
+      register: cassandra_running_processes
+
+    - name: Get running java processes
+      shell: "ps -ef | grep -v grep | grep -w java | awk '{print $2}'"
+      register: java_running_processes
+
+    - name: Kill running cassandra-stress processes
+      shell: "kill {{ item }}"
+      with_items: "{{ cassandra_running_processes.stdout_lines }}"
+      ignore_errors: yes
+
+    - name: Kill running java processes
+      shell: "kill {{ item }}"
+      with_items: "{{ java_running_processes.stdout_lines }}"
+      ignore_errors: yes
+
+    - name: Wait for cassandra-stress processes to stop
+      wait_for:
+        path: "/proc/{{ item }}/status"
+        state: absent
+      with_items: "{{ cassandra_running_processes.stdout_lines }}"
+      ignore_errors: yes
+      register: cassandra_killed_processes
+
+    - name: Wait for java processes to stop
+      wait_for:
+        path: "/proc/{{ item }}/status"
+        state: absent
+      with_items: "{{ java_running_processes.stdout_lines }}"
+      ignore_errors: yes
+      register: java_killed_processes
+
+    - name: Force kill stuck cassandra-stress processes
+      shell: "kill -9 {{ item }}"
+      with_items: "{{ cassandra_killed_processes.results | select('failed') | map(attribute='item') | list }}"
+      ignore_errors: yes
+
+    - name: Force kill stuck java processes
+      shell: "kill -9 {{ item }}"
+      with_items: "{{ java_killed_processes.results | select('failed') | map(attribute='item') | list }}"
+      ignore_errors: yes
+
+    - name: Verify cassandra-stress processes have been killed
+      ansible.builtin.shell: |
+        pgrep -f cassandra-stress && echo "cassandra-stress is still running" || echo "cassandra-stress has been killed"
+      register: cassandra_check
+
+    - name: Verify java processes have been killed
+      ansible.builtin.shell: |
+        pgrep -f java && echo "java is still running" || echo "java has been killed"
+      register: java_check
+

@@ -1,0 +1,22 @@
+---
+- name: Check if Scylla Seed is up and running
+  hosts: scylla_seed
+  become: yes  # This playbook needs to run with sudo to manage system services
+  gather_facts: no
+  tasks:
+    - name: Check Scylla service status
+      systemd:
+        name: scylla-server
+        state: started
+      register: scylla_status
+    - name: Wait for Scylla server to start serving
+      shell: journalctl -u scylla-server | grep 'serving'
+      register: scylla_serving
+      until: "'serving' in scylla_serving.stdout"
+      retries: 10
+      delay: 10
+      failed_when: scylla_serving.rc != 0 and 'serving' not in scylla_serving.stdout
+      ignore_errors: true
+    - name: Display service status
+      debug:
+        msg: "Scylla server service is {{ scylla_status.state }} and is serving."

@@ -1,0 +1,46 @@
+---
+- name: Decommission Nodes
+  hosts: cassandra_seed
+  become: yes  # This playbook needs to run with sudo to manage system services
+  gather_facts: no
+  tasks:
+    - name: Wait for Cassandra server to decommission safely
+      ansible.builtin.shell: |
+        nodetool decommission
+      async: 6400
+      poll: 10
+      ignore_errors: true
+
+    - name: Stop Cassandra if running
+      shell: "killall -q -9 java || true"
+      become: yes
+      become_user: ubuntu
+      ignore_errors: true
+
+    - name: Remove all files in saved_caches/
+      ansible.builtin.shell: "rm -rf /var/lib/cassandra/saved_caches/*"
+      ignore_errors: true
+
+    - name: Remove all files in coredump/
+      ansible.builtin.shell: "rm -rf /var/lib/cassandra/coredump/*"
+      ignore_errors: true
+
+    - name: Remove all files in logs/
+      ansible.builtin.shell: "rm -rf /var/lib/cassandra/logs/*"
+      ignore_errors: true
+
+    - name: Remove all files in hints/
+      ansible.builtin.shell: "rm -rf /var/lib/cassandra/hints/*"
+      ignore_errors: true
+
+    - name: Remove all files in view_hints/
+      ansible.builtin.shell: "rm -rf /var/lib/cassandra/view_hints/*"
+      ignore_errors: true
+
+    - name: Remove all files in data/
+      ansible.builtin.shell: "rm -rf /var/lib/cassandra/data/*"
+      ignore_errors: true
+
+    - name: Remove all files in commitlog/
+      ansible.builtin.shell: "rm -rf /var/lib/cassandra/commitlog/*"
+      ignore_errors: true

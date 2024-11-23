@@ -1,0 +1,574 @@
+{
+    "terraform": {
+        "required_providers": {
+            "aws": {
+                "source": "hashicorp/aws",
+                "version": "~> 5.0"
+            }
+        }
+    },
+    "provider": {
+        "aws": [
+            {
+                "alias": "us-east-1",
+                "region": "us-east-1"
+            }
+        ]
+    },
+    "resource": {
+        "aws_vpc": {
+            "vpc_us-east-1": {
+                "provider": "aws.us-east-1",
+                "cidr_block": "10.1.0.0/16",
+                "enable_dns_support": true,
+                "enable_dns_hostnames": true,
+                "tags": {
+                    "Name": "fs-cassandra-vs-scylla-009_us-east-1-VPC",
+                    "Type": "VPC",
+                    "Project": "fs-cassandra-vs-scylla-009"
+                }
+            }
+        },
+        "aws_subnet": {
+            "subnet_us-east-1_0": {
+                "provider": "aws.us-east-1",
+                "vpc_id": "${aws_vpc.vpc_us-east-1.id}",
+                "cidr_block": "10.1.0.0/24",
+                "map_public_ip_on_launch": true,
+                "availability_zone": "us-east-1a",
+                "tags": {
+                    "Name": "fs-cassandra-vs-scylla-009_us-east-1-VPC",
+                    "Type": "VPC",
+                    "Project": "fs-cassandra-vs-scylla-009"
+                }
+            },
+            "subnet_us-east-1_1": {
+                "provider": "aws.us-east-1",
+                "vpc_id": "${aws_vpc.vpc_us-east-1.id}",
+                "cidr_block": "10.1.1.0/24",
+                "map_public_ip_on_launch": true,
+                "availability_zone": "us-east-1b",
+                "tags": {
+                    "Name": "fs-cassandra-vs-scylla-009_us-east-1-VPC",
+                    "Type": "VPC",
+                    "Project": "fs-cassandra-vs-scylla-009"
+                }
+            },
+            "subnet_us-east-1_2": {
+                "provider": "aws.us-east-1",
+                "vpc_id": "${aws_vpc.vpc_us-east-1.id}",
+                "cidr_block": "10.1.2.0/24",
+                "map_public_ip_on_launch": true,
+                "availability_zone": "us-east-1c",
+                "tags": {
+                    "Name": "fs-cassandra-vs-scylla-009_us-east-1-VPC",
+                    "Type": "VPC",
+                    "Project": "fs-cassandra-vs-scylla-009"
+                }
+            }
+        },
+        "aws_instance": {
+            "cassandra_us-east-1_0": {
+                "provider": "aws.us-east-1",
+                "ami": "${data.aws_ami.ubuntu_ami_us-east-1.id}",
+                "instance_type": "i4i.4xlarge",
+                "subnet_id": "${aws_subnet.subnet_us-east-1_0.id}",
+                "vpc_security_group_ids": [
+                    "${aws_security_group.sg_us-east-1.id}"
+                ],
+                "tags": {
+                    "Name": "fs-cassandra-vs-scylla-009_us-east-1_cassandra_instance_0",
+                    "Group": "CassandraSeed",
+                    "Type": "Cassandra",
+                    "Project": "fs-cassandra-vs-scylla-009"
+                },
+                "key_name": "key_pair_us-east-1_sa_fs-cassandra-vs-scylla-009",
+                "depends_on": [
+                    "aws_security_group.sg_us-east-1",
+                    "aws_key_pair.key_pair_us-east-1"
+                ]
+            },
+            "cassandra_us-east-1_1": {
+                "provider": "aws.us-east-1",
+                "ami": "${data.aws_ami.ubuntu_ami_us-east-1.id}",
+                "instance_type": "i4i.4xlarge",
+                "subnet_id": "${aws_subnet.subnet_us-east-1_1.id}",
+                "vpc_security_group_ids": [
+                    "${aws_security_group.sg_us-east-1.id}"
+                ],
+                "tags": {
+                    "Name": "fs-cassandra-vs-scylla-009_us-east-1_cassandra_instance_1",
+                    "Group": "CassandraNonSeed",
+                    "Type": "Cassandra",
+                    "Project": "fs-cassandra-vs-scylla-009"
+                },
+                "key_name": "key_pair_us-east-1_sa_fs-cassandra-vs-scylla-009",
+                "depends_on": [
+                    "aws_security_group.sg_us-east-1",
+                    "aws_key_pair.key_pair_us-east-1"
+                ]
+            },
+            "cassandra_us-east-1_2": {
+                "provider": "aws.us-east-1",
+                "ami": "${data.aws_ami.ubuntu_ami_us-east-1.id}",
+                "instance_type": "i4i.4xlarge",
+                "subnet_id": "${aws_subnet.subnet_us-east-1_2.id}",
+                "vpc_security_group_ids": [
+                    "${aws_security_group.sg_us-east-1.id}"
+                ],
+                "tags": {
+                    "Name": "fs-cassandra-vs-scylla-009_us-east-1_cassandra_instance_2",
+                    "Group": "CassandraNonSeed",
+                    "Type": "Cassandra",
+                    "Project": "fs-cassandra-vs-scylla-009"
+                },
+                "key_name": "key_pair_us-east-1_sa_fs-cassandra-vs-scylla-009",
+                "depends_on": [
+                    "aws_security_group.sg_us-east-1",
+                    "aws_key_pair.key_pair_us-east-1"
+                ]
+            },
+            "cassandra_us-east-1_3": {
+                "provider": "aws.us-east-1",
+                "ami": "${data.aws_ami.ubuntu_ami_us-east-1.id}",
+                "instance_type": "i4i.4xlarge",
+                "subnet_id": "${aws_subnet.subnet_us-east-1_0.id}",
+                "vpc_security_group_ids": [
+                    "${aws_security_group.sg_us-east-1.id}"
+                ],
+                "tags": {
+                    "Name": "fs-cassandra-vs-scylla-009_us-east-1_cassandra_instance_3",
+                    "Group": "CassandraScale",
+                    "Type": "Cassandra",
+                    "Project": "fs-cassandra-vs-scylla-009"
+                },
+                "key_name": "key_pair_us-east-1_sa_fs-cassandra-vs-scylla-009",
+                "depends_on": [
+                    "aws_security_group.sg_us-east-1",
+                    "aws_key_pair.key_pair_us-east-1"
+                ]
+            },
+            "cassandra_us-east-1_4": {
+                "provider": "aws.us-east-1",
+                "ami": "${data.aws_ami.ubuntu_ami_us-east-1.id}",
+                "instance_type": "i4i.4xlarge",
+                "subnet_id": "${aws_subnet.subnet_us-east-1_1.id}",
+                "vpc_security_group_ids": [
+                    "${aws_security_group.sg_us-east-1.id}"
+                ],
+                "tags": {
+                    "Name": "fs-cassandra-vs-scylla-009_us-east-1_cassandra_instance_4",
+                    "Group": "CassandraScale",
+                    "Type": "Cassandra",
+                    "Project": "fs-cassandra-vs-scylla-009"
+                },
+                "key_name": "key_pair_us-east-1_sa_fs-cassandra-vs-scylla-009",
+                "depends_on": [
+                    "aws_security_group.sg_us-east-1",
+                    "aws_key_pair.key_pair_us-east-1"
+                ]
+            },
+            "cassandra_us-east-1_5": {
+                "provider": "aws.us-east-1",
+                "ami": "${data.aws_ami.ubuntu_ami_us-east-1.id}",
+                "instance_type": "i4i.4xlarge",
+                "subnet_id": "${aws_subnet.subnet_us-east-1_2.id}",
+                "vpc_security_group_ids": [
+                    "${aws_security_group.sg_us-east-1.id}"
+                ],
+                "tags": {
+                    "Name": "fs-cassandra-vs-scylla-009_us-east-1_cassandra_instance_5",
+                    "Group": "CassandraScale",
+                    "Type": "Cassandra",
+                    "Project": "fs-cassandra-vs-scylla-009"
+                },
+                "key_name": "key_pair_us-east-1_sa_fs-cassandra-vs-scylla-009",
+                "depends_on": [
+                    "aws_security_group.sg_us-east-1",
+                    "aws_key_pair.key_pair_us-east-1"
+                ]
+            },
+            "cassandra_loader_us-east-1_0": {
+                "provider": "aws.us-east-1",
+                "ami": "${data.aws_ami.ubuntu_ami_us-east-1.id}",
+                "instance_type": "c4.4xlarge",
+                "subnet_id": "${aws_subnet.subnet_us-east-1_0.id}",
+                "vpc_security_group_ids": [
+                    "${aws_security_group.sg_us-east-1.id}"
+                ],
+                "tags": {
+                    "Name": "fs-cassandra-vs-scylla-009_cassandra_loader_us-east-1_0",
+                    "Type": "CassandraLoader",
+                    "Project": "fs-cassandra-vs-scylla-009"
+                },
+                "key_name": "key_pair_us-east-1_sa_fs-cassandra-vs-scylla-009",
+                "depends_on": [
+                    "aws_security_group.sg_us-east-1",
+                    "aws_key_pair.key_pair_us-east-1"
+                ]
+            },
+            "cassandra_loader_us-east-1_1": {
+                "provider": "aws.us-east-1",
+                "ami": "${data.aws_ami.ubuntu_ami_us-east-1.id}",
+                "instance_type": "c4.4xlarge",
+                "subnet_id": "${aws_subnet.subnet_us-east-1_1.id}",
+                "vpc_security_group_ids": [
+                    "${aws_security_group.sg_us-east-1.id}"
+                ],
+                "tags": {
+                    "Name": "fs-cassandra-vs-scylla-009_cassandra_loader_us-east-1_1",
+                    "Type": "CassandraLoader",
+                    "Project": "fs-cassandra-vs-scylla-009"
+                },
+                "key_name": "key_pair_us-east-1_sa_fs-cassandra-vs-scylla-009",
+                "depends_on": [
+                    "aws_security_group.sg_us-east-1",
+                    "aws_key_pair.key_pair_us-east-1"
+                ]
+            },
+            "cassandra_loader_us-east-1_2": {
+                "provider": "aws.us-east-1",
+                "ami": "${data.aws_ami.ubuntu_ami_us-east-1.id}",
+                "instance_type": "c4.4xlarge",
+                "subnet_id": "${aws_subnet.subnet_us-east-1_2.id}",
+                "vpc_security_group_ids": [
+                    "${aws_security_group.sg_us-east-1.id}"
+                ],
+                "tags": {
+                    "Name": "fs-cassandra-vs-scylla-009_cassandra_loader_us-east-1_2",
+                    "Type": "CassandraLoader",
+                    "Project": "fs-cassandra-vs-scylla-009"
+                },
+                "key_name": "key_pair_us-east-1_sa_fs-cassandra-vs-scylla-009",
+                "depends_on": [
+                    "aws_security_group.sg_us-east-1",
+                    "aws_key_pair.key_pair_us-east-1"
+                ]
+            }
+        },
+        "aws_security_group": {
+            "sg_us-east-1": {
+                "name": "fs-cassandra-vs-scylla-009-sg-us-east-1",
+                "provider": "aws.us-east-1",
+                "vpc_id": "${aws_vpc.vpc_us-east-1.id}",
+                "ingress": [
+                    {
+                        "from_port": 443,
+                        "to_port": 443,
+                        "protocol": "tcp",
+                        "cidr_blocks": [
+                            "0.0.0.0/0"
+                        ],
+                        "description": "HTTPS access",
+                        "ipv6_cidr_blocks": [],
+                        "prefix_list_ids": [],
+                        "security_groups": [],
+                        "self": false
+                    },
+                    {
+                        "from_port": 3000,
+                        "to_port": 3000,
+                        "protocol": "tcp",
+                        "cidr_blocks": [
+                            "0.0.0.0/0"
+                        ],
+                        "description": "Monitoring access",
+                        "ipv6_cidr_blocks": [],
+                        "prefix_list_ids": [],
+                        "security_groups": [],
+                        "self": false
+                    },
+                    {
+                        "from_port": 80,
+                        "to_port": 80,
+                        "protocol": "tcp",
+                        "cidr_blocks": [
+                            "0.0.0.0/0"
+                        ],
+                        "description": "HTTP access",
+                        "ipv6_cidr_blocks": [],
+                        "prefix_list_ids": [],
+                        "security_groups": [],
+                        "self": false
+                    },
+                    {
+                        "from_port": 22,
+                        "to_port": 22,
+                        "protocol": "tcp",
+                        "cidr_blocks": [
+                            "0.0.0.0/0"
+                        ],
+                        "description": "SSH access",
+                        "ipv6_cidr_blocks": [],
+                        "prefix_list_ids": [],
+                        "security_groups": [],
+                        "self": false
+                    },
+                    {
+                        "from_port": 9042,
+                        "to_port": 9042,
+                        "protocol": "tcp",
+                        "cidr_blocks": [
+                            "0.0.0.0/0"
+                        ],
+                        "description": "CQL access",
+                        "ipv6_cidr_blocks": [],
+                        "prefix_list_ids": [],
+                        "security_groups": [],
+                        "self": false
+                    },
+                    {
+                        "from_port": 9142,
+                        "to_port": 9142,
+                        "protocol": "tcp",
+                        "cidr_blocks": [
+                            "0.0.0.0/0"
+                        ],
+                        "description": "SSL CQL access",
+                        "ipv6_cidr_blocks": [],
+                        "prefix_list_ids": [],
+                        "security_groups": [],
+                        "self": false
+                    },
+                    {
+                        "from_port": 7000,
+                        "to_port": 7000,
+                        "protocol": "tcp",
+                        "cidr_blocks": [
+                            "0.0.0.0/0"
+                        ],
+                        "description": "RPC access",
+                        "ipv6_cidr_blocks": [],
+                        "prefix_list_ids": [],
+                        "security_groups": [],
+                        "self": false
+                    },
+                    {
+                        "from_port": 7001,
+                        "to_port": 7001,
+                        "protocol": "tcp",
+                        "cidr_blocks": [
+                            "0.0.0.0/0"
+                        ],
+                        "description": "RPC SSL access",
+                        "ipv6_cidr_blocks": [],
+                        "prefix_list_ids": [],
+                        "security_groups": [],
+                        "self": false
+                    },
+                    {
+                        "from_port": 7199,
+                        "to_port": 7199,
+                        "protocol": "tcp",
+                        "cidr_blocks": [
+                            "0.0.0.0/0"
+                        ],
+                        "description": "JMX access",
+                        "ipv6_cidr_blocks": [],
+                        "prefix_list_ids": [],
+                        "security_groups": [],
+                        "self": false
+                    },
+                    {
+                        "from_port": 10000,
+                        "to_port": 10000,
+                        "protocol": "tcp",
+                        "cidr_blocks": [
+                            "0.0.0.0/0"
+                        ],
+                        "description": "REST access",
+                        "ipv6_cidr_blocks": [],
+                        "prefix_list_ids": [],
+                        "security_groups": [],
+                        "self": false
+                    },
+                    {
+                        "from_port": 9180,
+                        "to_port": 9180,
+                        "protocol": "tcp",
+                        "cidr_blocks": [
+                            "0.0.0.0/0"
+                        ],
+                        "description": "Prometheus access",
+                        "ipv6_cidr_blocks": [],
+                        "prefix_list_ids": [],
+                        "security_groups": [],
+                        "self": false
+                    },
+                    {
+                        "from_port": 9100,
+                        "to_port": 9100,
+                        "protocol": "tcp",
+                        "cidr_blocks": [
+                            "0.0.0.0/0"
+                        ],
+                        "description": "Node exp access",
+                        "ipv6_cidr_blocks": [],
+                        "prefix_list_ids": [],
+                        "security_groups": [],
+                        "self": false
+                    },
+                    {
+                        "from_port": 9160,
+                        "to_port": 9160,
+                        "protocol": "tcp",
+                        "cidr_blocks": [
+                            "0.0.0.0/0"
+                        ],
+                        "description": "Thrift access",
+                        "ipv6_cidr_blocks": [],
+                        "prefix_list_ids": [],
+                        "security_groups": [],
+                        "self": false
+                    },
+                    {
+                        "from_port": 19042,
+                        "to_port": 19042,
+                        "protocol": "tcp",
+                        "cidr_blocks": [
+                            "0.0.0.0/0"
+                        ],
+                        "description": "Shard-aware access",
+                        "ipv6_cidr_blocks": [],
+                        "prefix_list_ids": [],
+                        "security_groups": [],
+                        "self": false
+                    }
+                ],
+                "egress": [
+                    {
+                        "from_port": 0,
+                        "to_port": 0,
+                        "protocol": "-1",
+                        "cidr_blocks": [
+                            "0.0.0.0/0"
+                        ],
+                        "description": "Allow all outbound traffic",
+                        "ipv6_cidr_blocks": [],
+                        "prefix_list_ids": [],
+                        "security_groups": [],
+                        "self": false
+                    }
+                ],
+                "tags": {
+                    "Name": "fs-cassandra-vs-scylla-009-SG-us-east-1",
+                    "Project": "fs-cassandra-vs-scylla-009",
+                    "Type": "Security Group",
+                    "Region": "us-east-1"
+                }
+            }
+        },
+        "aws_internet_gateway": {
+            "igw_us-east-1": {
+                "vpc_id": "${aws_vpc.vpc_us-east-1.id}",
+                "provider": "aws.us-east-1",
+                "tags": {
+                    "Name": "fs-cassandra-vs-scylla-009-us-east-1-IGW",
+                    "Region": "us-east-1"
+                },
+                "depends_on": [
+                    "aws_vpc.vpc_us-east-1"
+                ]
+            }
+        },
+        "aws_route_table": {
+            "rt_us-east-1": {
+                "vpc_id": "${aws_vpc.vpc_us-east-1.id}",
+                "provider": "aws.us-east-1",
+                "tags": {
+                    "Name": "fs-cassandra-vs-scylla-009-us-east-1-RouteTable",
+                    "Region": "us-east-1"
+                },
+                "depends_on": [
+                    "aws_vpc.vpc_us-east-1",
+                    "aws_internet_gateway.igw_us-east-1"
+                ]
+            }
+        },
+        "aws_route_table_association": {
+            "rta_us-east-1_0": {
+                "provider": "aws.us-east-1",
+                "subnet_id": "${aws_subnet.subnet_us-east-1_0.id}",
+                "route_table_id": "${aws_route_table.rt_us-east-1.id}",
+                "depends_on": [
+                    "aws_subnet.subnet_us-east-1_0",
+                    "aws_route_table.rt_us-east-1"
+                ]
+            },
+            "rta_us-east-1_1": {
+                "provider": "aws.us-east-1",
+                "subnet_id": "${aws_subnet.subnet_us-east-1_1.id}",
+                "route_table_id": "${aws_route_table.rt_us-east-1.id}",
+                "depends_on": [
+                    "aws_subnet.subnet_us-east-1_1",
+                    "aws_route_table.rt_us-east-1"
+                ]
+            },
+            "rta_us-east-1_2": {
+                "provider": "aws.us-east-1",
+                "subnet_id": "${aws_subnet.subnet_us-east-1_2.id}",
+                "route_table_id": "${aws_route_table.rt_us-east-1.id}",
+                "depends_on": [
+                    "aws_subnet.subnet_us-east-1_2",
+                    "aws_route_table.rt_us-east-1"
+                ]
+            }
+        },
+        "aws_route": {
+            "route_us-east-1": {
+                "provider": "aws.us-east-1",
+                "route_table_id": "${aws_route_table.rt_us-east-1.id}",
+                "destination_cidr_block": "0.0.0.0/0",
+                "gateway_id": "${aws_internet_gateway.igw_us-east-1.id}",
+                "depends_on": [
+                    "aws_internet_gateway.igw_us-east-1",
+                    "aws_route_table.rt_us-east-1"
+                ]
+            }
+        },
+        "aws_key_pair": {
+            "key_pair_us-east-1": {
+                "provider": "aws.us-east-1",
+                "key_name": "key_pair_us-east-1_sa_fs-cassandra-vs-scylla-009",
+                "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOdCIE/3OD5H70D37tq6/3aNZl4TDFW1DEpxl3LB31rr faisal.saeed@scylladb.com"
+            }
+        }
+    },
+    "data": {
+        "aws_ami": {
+            "ubuntu_ami_us-east-1": {
+                "provider": "aws.us-east-1",
+                "most_recent": true,
+                "filter": [
+                    {
+                        "name": "name",
+                        "values": [
+                            "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+                        ]
+                    },
+                    {
+                        "name": "state",
+                        "values": [
+                            "available"
+                        ]
+                    },
+                    {
+                        "name": "architecture",
+                        "values": [
+                            "x86_64"
+                        ]
+                    },
+                    {
+                        "name": "root-device-type",
+                        "values": [
+                            "ebs"
+                        ]
+                    }
+                ],
+                "owners": [
+                    "099720109477"
+                ]
+            }
+        }
+    }
+}

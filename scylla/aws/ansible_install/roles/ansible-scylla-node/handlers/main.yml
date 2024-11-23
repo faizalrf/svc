@@ -1,0 +1,58 @@
+---
+
+- name: Clean yum metadata
+  command: yum clean metadata
+  args:
+    warn: no
+  become: true 
+
+- name: reload systemd configuration
+  become: true
+  systemd:
+    daemon_reload: true
+
+- name: scylla restart
+  become: true
+  service:
+    name: scylla-server
+    state: restarted
+    enabled: yes
+
+- name: scylla stop
+  become: true
+  service:
+    name: scylla-server
+    state: stopped
+
+- name: node_exporter start
+  become: true
+  service:
+    name: node-exporter
+    state: started
+    enabled: yes
+
+- name: Enable and start 'scylla-fstrim.timer' service
+  ansible.builtin.service:
+    name: scylla-fstrim.timer
+    state: started
+    enabled: yes
+  become: true
+
+- name: scylla-manager-agent start
+  become: true
+  service:
+    name: scylla-manager-agent
+    state: started
+    enabled: true
+
+- name: scylla-manager-agent stop
+  become: true
+  service:
+    name: scylla-manager-agent
+    state: stopped
+
+- name: scylla-manager-agent restart
+  become: true
+  service:
+    name: scylla-manager-agent
+    state: restarted

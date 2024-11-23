@@ -1,0 +1,13 @@
+- hosts: aws_monitor
+  name: Install Monitoring
+  roles:
+  - ansible-scylla-monitoring
+  vars:
+    alerts_receiver_email: example-email@example.com
+    alerts_sender_email: example-email@example.com
+    alerts_sender_password: Sender_p@ssw0rd
+    scylla_cluster_name: Bench
+    scylla_monitoring_archive_url: https://github.com/scylladb/scylla-monitoring/archive/refs/tags/4.8.1.tar.gz
+    scylla_monitoring_dashboards_versions:
+    - '2024.2'
+    scylla_servers_yml_path: ./scylla_servers.yml

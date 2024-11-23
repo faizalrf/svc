@@ -1,0 +1,26 @@
+- name: Install loader tools
+  hosts: aws_loader
+  gather_facts: no
+  vars_files:
+    - ../../variables.yml  # Explicitly include the variables.yml file
+  tasks:
+    - name: Ensure required tools are present
+      apt: 
+        name: [gpg, curl]  # Using a list for package installation
+        state: latest
+        update_cache: yes
+      become: yes
+    # Use the {{ scylla_repo_url }} from the variables.yml file instead of hardcoding it here. Faisal, 2024-09-04
+    - name: Install scylla keys and repo
+      shell: |
+        mkdir -p /etc/apt/keyrings
+        gpg --homedir /tmp --no-default-keyring --keyring /etc/apt/keyrings/scylladb.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys d0a112e067426ab2 87722433EBB454AE
+        curl -L --output /etc/apt/sources.list.d/scylla.list "{{ scylla_repo_url }}" 
+      become: yes
+
+    - name: Install scylla's version of cassandra-stress
+      apt: 
+        name: scylla-enterprise-tools
+        state: latest
+        update_cache: yes
+      become: yes

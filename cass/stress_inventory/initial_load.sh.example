@@ -1,0 +1,11 @@
+#!/bin/bash
+
+log_file="scylla_loadtest_$(date '+%Y-%m-%d_%H%M%S').log"
+
+echo "tail -f loader1_$log_file" > tail_log_1.sh
+echo "tail -f loader2_$log_file" > tail_log_2.sh
+
+chmod 550 tail_log*sh
+
+nohup cassandra-stress user profile=./cyclist_keyspace.yaml n=10000000000  "ops(insert=1)" no-warmup -rate threads=16  -node [scylla_ip_addresses] -port native=9042 > "loader1_$log_file" 2>&1 &
+nohup cassandra-stress user profile=./cyclist_keyspace.yaml n=10000000000  "ops(insert=1)" no-warmup -rate threads=16  -node [scylla_ip_addresses] -port native=9042 > "loader2_$log_file" 2>&1 &

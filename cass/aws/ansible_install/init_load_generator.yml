@@ -1,0 +1,17 @@
+---
+- hosts: aws_loader
+  gather_facts: no
+  tasks:
+    - name: Find all loader scripts
+      find:
+        paths: /home/ubuntu/  # This should match the directory where the scripts are located
+        patterns: "loader_*.sh"
+      register: scripts_found
+      no_log: true  # This will suppress logging the details of this task
+
+    - name: Execute all loader scripts in background
+      shell: "nohup bash {{ item.path }} > /dev/null 2>&1 &"
+      with_items: "{{ scripts_found.files }}"
+      args:
+        chdir: /home/ubuntu/  # Change to the directory where the scripts are located
+      no_log: true  # This will suppress logging the details of this task

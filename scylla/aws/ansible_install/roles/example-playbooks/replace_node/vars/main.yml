@@ -1,0 +1,49 @@
+# The node being replaced and its broadcast_address
+# replaced_node: 10.142.0.1
+# replaced_node_broadcast_address: 10.142.0.1
+
+# The node replacing the replaced_node
+# new_node: 10.142.0.2
+
+# Seed nodes list
+# scylla_seeds:
+#   - "{{ groups['scylla'][0] }}"
+
+# This should always be set to False, since it'll be passed to the node role
+# and we don't want the node role to start the new node automatically.
+# If you're reusing (as expected) the parameters you used to deploy the other nodes,
+# make sure that you set this specific value to false
+start_scylla_service: false
+
+# By default, the playbook will repair the new node only if RBNO was not used
+# during the replacement.
+# If you set this to true, the repair will be skipped even in such case.
+skip_repair: false
+
+# Any extra params you might want to pass sctool repair, like --intensity and/or --parallel
+extra_repair_params: ''
+
+# The maximum time we'll wait for the repair to finish before
+# stopping the execution of the playbook with an error message.
+new_node_repair_timeout_seconds: 36000
+
+# Default bootstrap timeout for the new node
+# This value will be used as a timeout twice:
+#   * Once for waiting for the CQL port to become available
+#   * And then it'll also be used to wait for the node to be seen as healthy by itself and by the other nodes
+# This means that in the worst case the actual timeout for bootstrapping will be:
+# (new_node_bootstrap_wait_time_sec * (n_nodes + 1))
+new_node_bootstrap_wait_time_sec: 25200
+
+# If you set this to true, this playbook will allow you to replace an alive node
+# by draining/stopping the node being replaced before starting the replace
+alive_node_replace: false
+
+# If you set this to true, this playbook will disable RBNO for the new node
+# during the replace
+disable_rbno: false
+
+alive_nodes_listen_address: "{{ vars['ansible_'~scylla_nic].ipv4.address }}"
+alive_nodes_broadcast_address: "{{ vars['ansible_'~scylla_nic].ipv4.address }}"
+
+cql_port: 9042
